@@ -1,41 +1,31 @@
-services:
-  app:
-    build:
-      context: ./fpm
-      dockerfile: Dockerfile
-    container_name: app
-    volumes:
-      - ./code:/data/mysite.local
-    networks:
-      - app-network
+version: '3.8'
 
-  webserver:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    container_name: webserver
-    volumes:
-      - ./code:/data/mysite.local
+services:
+  nginx:
+    build: ./nginx
     ports:
       - "80:80"
-      - "443:443"
-    networks:
-      - app-network
-
-  db:
-    image: mysql:5.7.22
-    container_name: db
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_DATABASE: laravel
-      MYSQL_ROOT_PASSWORD: your_mysql_root_password
     volumes:
-      - ./dbdata:/var/lib/mysql
-    networks:
-      - app-network
-    restart: always
+      - ./www:/var/www/html
+    depends_on:
+      - php
+      - mysql
 
-networks:
-  app-network:
-    driver: bridge
+  php:
+    build: ./php
+    volumes:
+      - ./www:/var/www/html
+      - ./php/php.ini:/usr/local/etc/php/php.ini
+
+  mysql:
+    build: ./mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: app_db
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:

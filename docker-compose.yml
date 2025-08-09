@@ -1,31 +1,57 @@
-version: '3.8'
 
 services:
-  nginx:
-    build: ./nginx
+  app:
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    container_name: app
+    volumes:
+      - ./www:/var/www/html
+      - ./php/conf.d/custom.ini:/usr/local/etc/php/conf.d/custom.ini # Добавляем эту строку
+    networks:
+      - app-network
+
+  webserver:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: webserver
+    volumes:
+      - ./www:/var/www/html
     ports:
       - "80:80"
-    volumes:
-      - ./www:/var/www/html
-    depends_on:
-      - php
-      - mysql
+    networks:
+      - app-network
 
-  php:
-    build: ./php
-    volumes:
-      - ./www:/var/www/html
-      - ./php/php.ini:/usr/local/etc/php/php.ini
-
-  mysql:
-    build: ./mysql
+  db:
+    image: mysql:5.7.22
+    container_name: db
+    ports:
+      - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: app_db
-      MYSQL_USER: app_user
-      MYSQL_PASSWORD: app_password
+      MYSQL_ROOT_PASSWORD: 12345
+      MYSQL_TCP_PORT: 3306
+      MYSQL_SSL: "false"
+      MYSQL_ALLOW_EMPTY_PASSWORD: "false"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ./dbdata:/var/lib/mysql
+      - ./mysql/conf.d/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - app-network
+    restart: always
 
-volumes:
-  mysql_data:
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: 12345
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
